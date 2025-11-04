@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DECA Event Recommender</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: #f8fafc;
+      }
+    </style>
+    <!-- React, ReactDOM & Babel from CDN -->
+    <script
+      src="https://unpkg.com/react@18/umd/react.development.js"
+      crossorigin
+    ></script>
+    <script
+      src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+      crossorigin
+    ></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useMemo } = React;
+
+      const SCHOOL_COLORS = {
+        primary: "#1e3a8a",
+        primaryLight: "#3b82f6",
+        accent: "#111827",
+        bg: "#f8fafc",
+        card: "#ffffff",
+        success: "#059669",
+      };
+
+      const containerStyle = {
+        fontFamily:
+          "Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+        background: SCHOOL_COLORS.bg,
+        color: SCHOOL_COLORS.accent,
+        minHeight: "100vh",
+      };
+
+      const Card = ({ children, style }) => (
+        <div
+          style={{
+            background: SCHOOL_COLORS.card,
+            borderRadius: 16,
+            padding: 20,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
+            border: "1px solid rgba(0,0,0,0.06)",
+            ...style,
+          }}
+        >
+          {children}
+        </div>
+      );
+
+      const Pill = ({ children }) => (
+        <span
+          style={{
+            display: "inline-block",
+            padding: "4px 10px",
+            fontSize: 12,
+            borderRadius: 999,
+            background: "#eef2ff",
+            color: SCHOOL_COLORS.primary,
+            marginRight: 8,
+            marginBottom: 8,
+            border: `1px solid ${SCHOOL_COLORS.primary}22`,
+          }}
+        >
+          {children}
+        </span>
+      );
+
+      const Label = ({ children }) => (
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>{children}</div>
+      );
+
+      const SectionTitle = ({ children }) => (
+        <h2
+          style={{
+            fontSize: 18,
+            fontWeight: 800,
+            margin: "20px 0 10px",
+            color: SCHOOL_COLORS.primary,
+            letterSpacing: 0.2,
+          }}
+        >
+          {children}
+        </h2>
+      );
+
+      const EVENTS = [
+        {
+          code: "PBM",
+          name: "Principles of Business Management & Administration",
+          tags: [
+            "principles",
+            "business",
+            "solo",
+            "roleplay",
+            "exam",
+            "presentation",
+          ],
+          desc: "Intro event for first-year members covering core business concepts.",
+        },
+        {
+          code: "PFN",
+          name: "Principles of Finance",
+          tags: [
+            "principles",
+            "finance",
+            "solo",
+            "roleplay",
+            "exam",
+            "math",
+            "presentation",
+          ],
+          desc: "Intro finance pathways: money management, accounting, banking.",
+        },
+        {
+          code: "PMK",
+          name: "Principles of Marketing",
+          tags: [
+            "principles",
+            "marketing",
+            "solo",
+            "roleplay",
+            "exam",
+            "presentation",
+          ],
+          desc: "Intro to marketing strategy, promotion, pricing, and channels.",
+        },
+        {
+          code: "PHT",
+          name: "Principles of Hospitality & Tourism",
+          tags: [
+            "principles",
+            "hospitality",
+            "solo",
+            "roleplay",
+            "exam",
+            "presentation",
+          ],
+          desc: "Intro to service, lodging, tourism, and event management.",
+        },
+
+        {
+          code: "ACT",
+          name: "Accounting Applications",
+          tags: ["finance", "solo", "roleplay", "exam", "math"],
+          desc: "Accounting scenarios, financial statements, and analysis.",
+        },
+        {
+          code: "ASM",
+          name: "Automotive Services Marketing",
+          tags: ["marketing", "solo", "roleplay", "exam"],
+          desc: "Marketing strategies in automotive industries.",
+        },
+        {
+          code: "AAP",
+          name: "Apparel & Accessories Marketing",
+          tags: ["marketing", "solo", "roleplay", "exam"],
+          desc: "Retail, merchandising, and brand promotion in fashion.",
+        },
+        {
+          code: "BFS",
+          name: "Business Finance",
+          tags: ["finance", "solo", "roleplay", "exam", "math"],
+          desc: "Corporate finance, investments, and risk topics.",
+        },
+        {
+          code: "BPA",
+          name: "Business Services Marketing",
+          tags: ["marketing", "solo", "roleplay", "exam"],
+          desc: "Marketing for services firms (agencies, consultancies).",
+        },
+        {
+          code: "ENT",
+          name: "Entrepreneurship Series",
+          tags: ["entrepreneurship", "solo", "roleplay", "exam", "presentation"],
+          desc: "Small business challenges, opportunity spotting, feasibility.",
+        },
+        {
+          code: "FMS",
+          name: "Food Marketing",
+          tags: ["marketing", "solo", "roleplay", "exam", "hospitality"],
+          desc: "Grocery/CPG retail, category management, and promotion.",
+        },
+        {
+          code: "HLM",
+          name: "Hotel & Lodging Management",
+          tags: ["hospitality", "solo", "roleplay", "exam"],
+          desc: "Property operations, service quality, and revenue mgmt.",
+        },
+        {
+          code: "HRM",
+          name: "Human Resources Management",
+          tags: ["business", "hr", "solo", "roleplay", "exam"],
+          desc: "Talent, org behavior, training, and policy scenarios.",
+        },
+        {
+          code: "QSRM",
+          name: "Quick Serve Restaurant Management",
+          tags: ["hospitality", "solo", "roleplay", "exam"],
+          desc: "Fast-casual/quick service ops and customer experience.",
+        },
+        {
+          code: "RFSM",
+          name: "Restaurant & Food Service Mgmt",
+          tags: ["hospitality", "solo", "roleplay", "exam"],
+          desc: "Full-service restaurant ops and financials.",
+        },
+        {
+          code: "RMS",
+          name: "Retail Merchandising",
+          tags: ["marketing", "solo", "roleplay", "exam"],
+          desc: "Merchandising, promotions, omnichannel retail.",
+        },
+        {
+          code: "SEM",
+          name: "Sports & Entertainment Marketing",
+          tags: ["marketing", "solo", "roleplay", "exam"],
+          desc: "Sponsorships, fan engagement, events, media rights.",
+        },
+
+        {
+          code: "BLTDM",
+          name: "Business Law & Ethics TDM",
+          tags: ["business", "law", "team", "roleplay", "exam"],
+          desc: "Ethical dilemmas, policy, contracts.",
+        },
+        {
+          code: "BTDM",
+          name: "Buying & Merchandising TDM",
+          tags: ["marketing", "team", "roleplay", "exam"],
+          desc: "Assortment, vendors, inventory, retail strategy.",
+        },
+        {
+          code: "ETDM",
+          name: "Entrepreneurship TDM",
+          tags: ["entrepreneurship", "team", "roleplay", "exam", "presentation"],
+          desc: "Startup challenges, pivoting, growth planning.",
+        },
+        {
+          code: "FTDM",
+          name: "Financial Services TDM",
+          tags: ["finance", "team", "roleplay", "exam", "math"],
+          desc: "Banking, investments, insurance, advisory.",
+        },
+        {
+          code: "HTDM",
+          name: "Hospitality Services TDM",
+          tags: ["hospitality", "team", "roleplay", "exam"],
+          desc: "Service design, service recovery, events.",
+        },
+        {
+          code: "MTDM",
+          name: "Marketing Management TDM",
+          tags: ["marketing", "team", "roleplay", "exam"],
+          desc: "Brand strategy, pricing, channels, analytics.",
+        },
+        {
+          code: "STDM",
+          name: "Sports & Entertainment TDM",
+          tags: ["marketing", "team", "roleplay", "exam"],
+          desc: "SE marketing strategy, partnerships, monetization.",
+        },
+        {
+          code: "TTDM",
+          name: "Travel & Tourism TDM",
+          tags: ["hospitality", "team", "roleplay", "exam"],
+          desc: "Destination marketing, packages, tour ops.",
+        },
+
+        {
+          code: "PSE",
+          name: "Professional Selling",
+          tags: ["sales", "solo", "presentation", "roleplay"],
+          desc: "Sales call with needs discovery and solution pitch.",
+        },
+        {
+          code: "HTPS",
+          name: "Hospitality & Tourism Professional Selling",
+          tags: ["sales", "hospitality", "solo", "presentation", "roleplay"],
+          desc: "Sales for lodging, tourism, and events.",
+        },
+        {
+          code: "FCE",
+          name: "Financial Consulting Event",
+          tags: ["finance", "consulting", "solo", "presentation", "math"],
+          desc: "Analyze a client’s financial case and present advice.",
+        },
+
+        {
+          code: "EIP",
+          name: "Entrepreneurship Innovation Plan",
+          tags: ["entrepreneurship", "solo", "written", "project", "presentation"],
+          desc: "New product/service concept + brief plan/pitch.",
+        },
+        {
+          code: "EIB",
+          name: "Entrepreneurship Independent Business Plan",
+          tags: ["entrepreneurship", "team", "written", "project", "presentation"],
+          desc: "Full business plan (1-3 members).",
+        },
+        {
+          code: "FBP",
+          name: "Franchise Business Plan",
+          tags: ["entrepreneurship", "team", "written", "project", "presentation"],
+          desc: "Evaluate/pitch opening a franchise.",
+        },
+        {
+          code: "BMOR",
+          name: "Business Services Operations Research",
+          tags: ["business", "written", "project", "presentation"],
+          desc: "Research + recommendations for a business issue.",
+        },
+        {
+          code: "FOR",
+          name: "Finance Operations Research",
+          tags: ["finance", "written", "project", "presentation"],
+          desc: "Analyze financial processes and propose improvements.",
+        },
+        {
+          code: "HTOR",
+          name: "Hospitality & Tourism Operations Research",
+          tags: ["hospitality", "written", "project", "presentation"],
+          desc: "Improve ops for lodging, events, tourism.",
+        },
+        {
+          code: "SEOR",
+          name: "Sports & Entertainment Operations Research",
+          tags: ["marketing", "written", "project", "presentation"],
+          desc: "Solve a real SE marketing/ops problem via research.",
+        },
+        {
+          code: "IMCP",
+          name: "Integrated Marketing Campaign – Product",
+          tags: ["marketing", "written", "project", "presentation"],
+          desc: "Full IMC plan with creative + metrics (Product track).",
+        },
+        {
+          code: "IMCS",
+          name: "Integrated Marketing Campaign – Service",
+          tags: ["marketing", "written", "project", "presentation"],
+          desc: "IMC plan (Service track).",
+        },
+        {
+          code: "IMCE",
+          name: "Integrated Marketing Campaign – Event",
+          tags: ["marketing", "written", "project", "presentation"],
+          desc: "IMC plan (Event track).",
+        },
+        {
+          code: "BOR",
+          name: "Business Operations Research (General)",
+          tags: ["business", "written", "project", "presentation"],
+          desc: "General operations research (use if unsure of subpath).",
+        },
+      ];
+
+      const has = (event, tag) => event.tags.includes(tag);
+
+      const QUESTIONS = [
+        {
+          key: "experience",
+          label: "How many years have you been in DECA?",
+          type: "radio",
+          options: [
+            { value: "first", label: "This is my first year" },
+            { value: "1-2", label: "1–2 years" },
+            { value: "3+", label: "3+ years" },
+          ],
+          required: true,
+        },
+        {
+          key: "focus",
+          label: "Which area sounds most like you right now?",
+          type: "radio",
+          options: [
+            { value: "marketing", label: "Marketing / Branding / Social" },
+            { value: "finance", label: "Finance / Investing / Accounting" },
+            {
+              value: "hospitality",
+              label: "Hospitality / Tourism / Events",
+            },
+            { value: "entrepreneurship", label: "Entrepreneurship / Startups" },
+            { value: "business", label: "General Business / Management / HR" },
+          ],
+          required: true,
+        },
+        {
+          key: "team",
+          label: "Do you want to compete…",
+          type: "radio",
+          options: [
+            { value: "solo", label: "Solo" },
+            { value: "team", label: "As a team of two (TDM)" },
+            { value: "either", label: "Either is fine" },
+          ],
+          required: true,
+        },
+        {
+          key: "style",
+          label: "What sounds more fun?",
+          type: "radio",
+          options: [
+            { value: "roleplay", label: "Role-play with judge + exam" },
+            { value: "written", label: "Research or write a plan + present" },
+            { value: "sales", label: "Sales/consulting presentation" },
+            { value: "mix", label: "I want a mix / not sure" },
+          ],
+          required: true,
+        },
+        {
+          key: "mathComfort",
+          label: "Math & data comfort (for finance/accounting-heavy events)?",
+          type: "radio",
+          options: [
+            { value: "high", label: "High — spreadsheets are my jam" },
+            { value: "med", label: "Medium" },
+            { value: "low", label: "Lower — prefer creative/people tasks" },
+          ],
+          required: true,
+        },
+        {
+          key: "time",
+          label: "Time you want to invest before competition",
+          type: "radio",
+          options: [
+            {
+              value: "low",
+              label: "Lower prep (practice role-plays, study exam)",
+            },
+            {
+              value: "medium",
+              label: "Moderate prep (some research/build)",
+            },
+            {
+              value: "high",
+              label: "High (multi-week project/business plan)",
+            },
+          ],
+          required: true,
+        },
+        {
+          key: "interests",
+          label: "Pick any interests (optional)",
+          type: "checkbox",
+          options: [
+            { value: "sports", label: "Sports & Entertainment" },
+            { value: "fashion", label: "Fashion / Apparel" },
+            { value: "food", label: "Food / Restaurants" },
+            { value: "autos", label: "Automotive" },
+            { value: "law", label: "Business Law & Ethics" },
+            { value: "hr", label: "Human Resources" },
+            { value: "travel", label: "Travel & Tourism" },
+            { value: "retail", label: "Retail / Merchandising" },
+          ],
+          required: false,
+        },
+      ];
+
+      function Header({ title, subtitle, logoUrl }) {
+        return (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 16,
+              padding: "24px 0 8px",
+            }}
+          >
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt="School logo"
+                style={{ height: 56, borderRadius: 12 }}
+              />
+            ) : (
+              <div
+                aria-hidden
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 12,
+                  background: SCHOOL_COLORS.primary,
+                  display: "grid",
+                  placeItems: "center",
+                  color: "white",
+                  fontWeight: 800,
+                }}
+              >
+                DE
+              </div>
+            )}
+            <div>
+              <h1
+                style={{
+                  margin: 0,
+                  fontSize: 24,
+                  fontWeight: 900,
+                  color: SCHOOL_COLORS.primary,
+                }}
+              >
+                {title}
+              </h1>
+              <div style={{ opacity: 0.75, marginTop: 4 }}>{subtitle}</div>
+            </div>
+          </div>
+        );
+      }
+
+      function RadioGroup({ name, value, onChange, options }) {
+        return (
+          <div style={{ display: "grid", gap: 8 }}>
+            {options.map((opt) => (
+              <label
+                key={opt.value}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="radio"
+                  name={name}
+                  value={opt.value}
+                  checked={value === opt.value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
+                <span>{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        );
+      }
+
+      function CheckboxGroup({ values, onToggle, options }) {
+        return (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {options.map((opt) => {
+              const checked = values.includes(opt.value);
+              return (
+                <label
+                  key={opt.value}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    cursor: "pointer",
+                    border: `1px solid ${
+                      checked ? SCHOOL_COLORS.primary : "#e5e7eb"
+                    }`,
+                    borderRadius: 999,
+                    padding: "8px 12px",
+                    background: checked ? "#eef2ff" : "white",
+                    color: checked ? SCHOOL_COLORS.primary : "inherit",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => onToggle(opt.value)}
+                  />
+                  <span>{opt.label}</span>
+                </label>
+              );
+            })}
+          </div>
+        );
+      }
+
+      function useScores(answers) {
+        return useMemo(() => {
+          const scores = Object.fromEntries(EVENTS.map((e) => [e.code, 0]));
+
+          const add = (predicate, amount = 1) => {
+            EVENTS.forEach((e) => {
+              if (predicate(e)) scores[e.code] += amount;
+            });
+          };
+
+          if (answers.experience === "first") {
+            add((e) => has(e, "principles"), 6);
+            add((e) => !has(e, "principles"), 0.5);
+          } else if (answers.experience) {
+            add((e) => has(e, "principles"), -4);
+          }
+
+          if (answers.focus) {
+            add((e) => has(e, answers.focus), 5);
+          }
+
+          if (answers.team === "team") add((e) => has(e, "team"), 4);
+          if (answers.team === "solo") add((e) => has(e, "solo"), 4);
+          if (answers.team === "either") add(() => true, 0.5);
+
+          switch (answers.style) {
+            case "roleplay":
+              add((e) => has(e, "roleplay"), 4);
+              add((e) => has(e, "exam"), 2);
+              break;
+            case "written":
+              add((e) => has(e, "written") || has(e, "project"), 5);
+              break;
+            case "sales":
+              add((e) => has(e, "sales") || has(e, "consulting"), 6);
+              break;
+            case "mix":
+              add(() => true, 1.2);
+              break;
+            default:
+              break;
+          }
+
+          if (answers.mathComfort === "high")
+            add((e) => has(e, "math") || has(e, "finance"), 3);
+          if (answers.mathComfort === "med") add((e) => has(e, "math"), 1);
+          if (answers.mathComfort === "low") add((e) => has(e, "math"), -2);
+
+          if (answers.time === "low")
+            add((e) => has(e, "roleplay") && has(e, "exam"), 2);
+          if (answers.time === "medium") add((e) => has(e, "project"), 1.5);
+          if (answers.time === "high")
+            add((e) => has(e, "written") || has(e, "project"), 3);
+
+          const interests = answers.interests || [];
+          const interestMap = {
+            sports: (e) =>
+              e.code === "SEM" || e.code === "STDM" || has(e, "marketing"),
+            fashion: (e) => e.code === "AAP",
+            food: (e) =>
+              e.code === "RFSM" ||
+              e.code === "QSRM" ||
+              e.code === "FMS" ||
+              has(e, "hospitality"),
+            autos: (e) => e.code === "ASM",
+            law: (e) => e.code === "BLTDM",
+            hr: (e) => e.code === "HRM",
+            travel: (e) =>
+              e.code === "TTDM" || e.code === "HLM" || has(e, "hospitality"),
+            retail: (e) => e.code === "RMS" || e.code === "BTDM",
+          };
+
+          interests.forEach((i) => {
+            const matcher = interestMap[i];
+            if (matcher) add(matcher, 2);
+          });
+
+          if (answers.focus === "entrepreneurship")
+            add((e) => has(e, "entrepreneurship"), 2);
+
+          return scores;
+        }, [answers]);
+      }
+
+      function Results({ answers }) {
+        const scores = useScores(answers);
+        const ranked = useMemo(() => {
+          const list = EVENTS.map((e) => ({ ...e, score: scores[e.code] })).sort(
+            (a, b) => b.score - a.score
+          );
+
+          const filtered = list.filter((e) => {
+            if (has(e, "principles") && answers.experience !== "first")
+              return false;
+            return true;
+          });
+
+          return filtered.slice(0, 10);
+        }, [scores, answers]);
+
+        if (!answers.experience) return null;
+
+        return (
+          <div>
+            <SectionTitle>Top Recommendations</SectionTitle>
+            <div style={{ display: "grid", gap: 12 }}>
+              {ranked.map((e, idx) => (
+                <Card key={e.code}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "baseline",
+                      gap: 12,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 900, fontSize: 16 }}>
+                        {idx + 1}. {e.name}{" "}
+                        <span style={{ opacity: 0.6 }}>({e.code})</span>
+                      </div>
+                      <div style={{ marginTop: 6, opacity: 0.85 }}>
+                        {e.desc}
+                      </div>
+                      <div style={{ marginTop: 10 }}>
+                        {e.tags.slice(0, 6).map((t) => (
+                          <Pill key={t}>{t}</Pill>
+                        ))}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: SCHOOL_COLORS.success,
+                        fontWeight: 800,
+                      }}
+                    >
+                      Fit score: {e.score.toFixed(1)}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            <details style={{ marginTop: 16 }}>
+              <summary
+                style={{
+                  cursor: "pointer",
+                  color: SCHOOL_COLORS.primary,
+                  fontWeight: 700,
+                }}
+              >
+                Why these picks?
+              </summary>
+              <div style={{ marginTop: 8, opacity: 0.9 }}>
+                We scored each event using your answers about focus (e.g.,
+                marketing vs. finance), team vs. solo, preferred style
+                (role-play/written/sales), math comfort, expected prep time, and
+                interests. You can tweak choices to see the list update
+                instantly.
+              </div>
+            </details>
+          </div>
+        );
+      }
+
+      function App() {
+        const [logoUrl, setLogoUrl] = useState("");
+        const [answers, setAnswers] = useState({
+          experience: "",
+          focus: "",
+          team: "",
+          style: "",
+          mathComfort: "",
+          time: "",
+          interests: [],
+        });
+
+        const handleChange = (key, value) =>
+          setAnswers((a) => ({
+            ...a,
+            [key]: value,
+          }));
+
+        const toggleInterest = (value) =>
+          setAnswers((a) => {
+            const set = new Set(a.interests);
+            set.has(value) ? set.delete(value) : set.add(value);
+            return { ...a, interests: Array.from(set) };
+          });
+
+        const allRequiredAnswered = useMemo(() => {
+          return QUESTIONS.filter((q) => q.required).every((q) => {
+            const v = answers[q.key];
+            return Array.isArray(v) ? v.length > 0 : Boolean(v);
+          });
+        }, [answers]);
+
+        const reset = () => {
+          setAnswers({
+            experience: "",
+            focus: "",
+            team: "",
+            style: "",
+            mathComfort: "",
+            time: "",
+            interests: [],
+          });
+        };
+
+        return (
+          <div style={containerStyle}>
+            <div style={{ maxWidth: 1000, margin: "0 auto", padding: 24 }}>
+              <Header
+                title="DECA Event Recommender"
+                subtitle="Answer a few smart questions and get the best-fit DECA events for you."
+                logoUrl={logoUrl}
+              />
+
+              <Card style={{ marginTop: 12 }}>
+                <SectionTitle>Customize Look (optional)</SectionTitle>
+                <div style={{ display: "grid", gap: 8 }}>
+                  <Label>School/Chapter Logo URL</Label>
+                  <input
+                    type="url"
+                    placeholder="Paste a logo image URL (PNG/JPG)"
+                    value={logoUrl}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                    style={{
+                      padding: 12,
+                      borderRadius: 12,
+                      border: "1px solid #e5e7eb",
+                      outline: "none",
+                    }}
+                  />
+                </div>
+              </Card>
+
+              <div style={{ height: 8 }} />
+
+              <Card>
+                <SectionTitle>Your Preferences</SectionTitle>
+                <div style={{ display: "grid", gap: 18 }}>
+                  {QUESTIONS.map((q) => (
+                    <div key={q.key}>
+                      <Label>{q.label}</Label>
+                      {q.type === "radio" && (
+                        <RadioGroup
+                          name={q.key}
+                          value={answers[q.key]}
+                          onChange={(v) => handleChange(q.key, v)}
+                          options={q.options}
+                        />
+                      )}
+                      {q.type === "checkbox" && (
+                        <CheckboxGroup
+                          values={answers[q.key]}
+                          onToggle={toggleInterest}
+                          options={q.options}
+                        />
+                      )}
+                    </div>
+                  ))}
+
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    <button
+                      onClick={reset}
+                      style={{
+                        background: "white",
+                        color: SCHOOL_COLORS.primary,
+                        border: `2px solid ${SCHOOL_COLORS.primary}`,
+                        padding: "10px 14px",
+                        borderRadius: 12,
+                        fontWeight: 800,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Reset
+                    </button>
+
+                    <button
+                      disabled={!allRequiredAnswered}
+                      onClick={() =>
+                        window.scrollTo({
+                          top: document.body.scrollHeight,
+                          behavior: "smooth",
+                        })
+                      }
+                      style={{
+                        background: allRequiredAnswered
+                          ? SCHOOL_COLORS.primary
+                          : "#93c5fd",
+                        color: "white",
+                        border: "none",
+                        padding: "10px 14px",
+                        borderRadius: 12,
+                        fontWeight: 800,
+                        cursor: allRequiredAnswered ? "pointer" : "not-allowed",
+                      }}
+                    >
+                      Show my matches
+                    </button>
+                  </div>
+                </div>
+              </Card>
+
+              <div style={{ height: 12 }} />
+
+              <Results answers={answers} />
+
+              <div
+                style={{
+                  padding: 20,
+                  textAlign: "center",
+                  opacity: 0.6,
+                  fontSize: 12,
+                }}
+              >
+                Tip: If you’re not a first-year member, Principles events are
+                hidden automatically.
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
