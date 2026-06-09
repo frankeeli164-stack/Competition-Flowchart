@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DECA Event Recommender</title>
+    <title>DECA Event Recommender & Stock Watchlist</title>
     <style>
       body {
         margin: 0;
@@ -28,7 +28,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-      const { useState, useMemo } = React;
+      const { useState, useMemo, useEffect } = React;
 
       const SCHOOL_COLORS = {
         primary: "#1e3a8a",
@@ -37,6 +37,9 @@
         bg: "#f8fafc",
         card: "#ffffff",
         success: "#059669",
+        warning: "#d97706",
+        danger: "#dc2626",
+        green: "#16a34a",
       };
 
       const containerStyle = {
@@ -62,18 +65,19 @@
         </div>
       );
 
-      const Pill = ({ children }) => (
+      const Pill = ({ children, color }) => (
         <span
           style={{
             display: "inline-block",
             padding: "4px 10px",
             fontSize: 12,
             borderRadius: 999,
-            background: "#eef2ff",
-            color: SCHOOL_COLORS.primary,
+            background: color ? `${color}18` : "#eef2ff",
+            color: color || SCHOOL_COLORS.primary,
             marginRight: 8,
             marginBottom: 8,
-            border: `1px solid ${SCHOOL_COLORS.primary}22`,
+            border: `1px solid ${color || SCHOOL_COLORS.primary}33`,
+            fontWeight: 600,
           }}
         >
           {children}
@@ -97,6 +101,8 @@
           {children}
         </h2>
       );
+
+      // ─── DECA DATA ──────────────────────────────────────────────────────────────
 
       const EVENTS = [
         {
@@ -297,7 +303,7 @@
           code: "FCE",
           name: "Financial Consulting Event",
           tags: ["finance", "consulting", "solo", "presentation", "math"],
-          desc: "Analyze a client’s financial case and present advice.",
+          desc: "Analyze a client's financial case and present advice.",
         },
 
         {
@@ -470,6 +476,8 @@
         },
       ];
 
+      // ─── SHARED COMPONENTS ───────────────────────────────────────────────────────
+
       function Header({ title, subtitle, logoUrl }) {
         return (
           <div
@@ -581,6 +589,8 @@
           </div>
         );
       }
+
+      // ─── DECA COMPONENTS ─────────────────────────────────────────────────────────
 
       function useScores(answers) {
         return useMemo(() => {
@@ -749,8 +759,7 @@
         );
       }
 
-      function App() {
-        const [logoUrl, setLogoUrl] = useState("");
+      function DecaTab({ logoUrl, setLogoUrl }) {
         const [answers, setAnswers] = useState({
           experience: "",
           focus: "",
@@ -762,10 +771,7 @@
         });
 
         const handleChange = (key, value) =>
-          setAnswers((a) => ({
-            ...a,
-            [key]: value,
-          }));
+          setAnswers((a) => ({ ...a, [key]: value }));
 
         const toggleInterest = (value) =>
           setAnswers((a) => {
@@ -794,116 +800,796 @@
         };
 
         return (
-          <div style={containerStyle}>
-            <div style={{ maxWidth: 1000, margin: "0 auto", padding: 24 }}>
-              <Header
-                title="DECA Event Recommender"
-                subtitle="Answer a few smart questions and get the best-fit DECA events for you."
-                logoUrl={logoUrl}
-              />
+          <div>
+            <Card style={{ marginTop: 12 }}>
+              <SectionTitle>Customize Look (optional)</SectionTitle>
+              <div style={{ display: "grid", gap: 8 }}>
+                <Label>School/Chapter Logo URL</Label>
+                <input
+                  type="url"
+                  placeholder="Paste a logo image URL (PNG/JPG)"
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  style={{
+                    padding: 12,
+                    borderRadius: 12,
+                    border: "1px solid #e5e7eb",
+                    outline: "none",
+                  }}
+                />
+              </div>
+            </Card>
 
-              <Card style={{ marginTop: 12 }}>
-                <SectionTitle>Customize Look (optional)</SectionTitle>
-                <div style={{ display: "grid", gap: 8 }}>
-                  <Label>School/Chapter Logo URL</Label>
-                  <input
-                    type="url"
-                    placeholder="Paste a logo image URL (PNG/JPG)"
-                    value={logoUrl}
-                    onChange={(e) => setLogoUrl(e.target.value)}
+            <div style={{ height: 8 }} />
+
+            <Card>
+              <SectionTitle>Your Preferences</SectionTitle>
+              <div style={{ display: "grid", gap: 18 }}>
+                {QUESTIONS.map((q) => (
+                  <div key={q.key}>
+                    <Label>{q.label}</Label>
+                    {q.type === "radio" && (
+                      <RadioGroup
+                        name={q.key}
+                        value={answers[q.key]}
+                        onChange={(v) => handleChange(q.key, v)}
+                        options={q.options}
+                      />
+                    )}
+                    {q.type === "checkbox" && (
+                      <CheckboxGroup
+                        values={answers[q.key]}
+                        onToggle={toggleInterest}
+                        options={q.options}
+                      />
+                    )}
+                  </div>
+                ))}
+
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  <button
+                    onClick={reset}
                     style={{
-                      padding: 12,
+                      background: "white",
+                      color: SCHOOL_COLORS.primary,
+                      border: `2px solid ${SCHOOL_COLORS.primary}`,
+                      padding: "10px 14px",
                       borderRadius: 12,
-                      border: "1px solid #e5e7eb",
-                      outline: "none",
+                      fontWeight: 800,
+                      cursor: "pointer",
                     }}
+                  >
+                    Reset
+                  </button>
+
+                  <button
+                    disabled={!allRequiredAnswered}
+                    onClick={() =>
+                      window.scrollTo({
+                        top: document.body.scrollHeight,
+                        behavior: "smooth",
+                      })
+                    }
+                    style={{
+                      background: allRequiredAnswered
+                        ? SCHOOL_COLORS.primary
+                        : "#93c5fd",
+                      color: "white",
+                      border: "none",
+                      padding: "10px 14px",
+                      borderRadius: 12,
+                      fontWeight: 800,
+                      cursor: allRequiredAnswered ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    Show my matches
+                  </button>
+                </div>
+              </div>
+            </Card>
+
+            <div style={{ height: 12 }} />
+
+            <Results answers={answers} />
+
+            <div
+              style={{
+                padding: 20,
+                textAlign: "center",
+                opacity: 0.6,
+                fontSize: 12,
+              }}
+            >
+              Tip: If you're not a first-year member, Principles events are
+              hidden automatically.
+            </div>
+          </div>
+        );
+      }
+
+      // ─── STOCK WATCHLIST ─────────────────────────────────────────────────────────
+
+      const HORIZON_LABELS = {
+        short: "Short-term (< 1 yr)",
+        medium: "Medium-term (1–3 yr)",
+        long: "Long-term (3+ yr)",
+      };
+
+      const CONFIDENCE_COLORS = {
+        low: SCHOOL_COLORS.warning,
+        medium: SCHOOL_COLORS.primaryLight,
+        high: SCHOOL_COLORS.green,
+      };
+
+      const CONFIDENCE_LABELS = {
+        low: "Low confidence",
+        medium: "Medium confidence",
+        high: "High confidence",
+      };
+
+      const EMPTY_FORM = {
+        ticker: "",
+        company: "",
+        expectedReturn: "",
+        horizon: "medium",
+        confidence: "medium",
+        thesis: "",
+        targetPrice: "",
+        entryPrice: "",
+      };
+
+      function returnColor(pct) {
+        const n = parseFloat(pct);
+        if (n >= 50) return "#16a34a";
+        if (n >= 20) return "#059669";
+        if (n >= 10) return "#0891b2";
+        if (n >= 0) return SCHOOL_COLORS.primaryLight;
+        return SCHOOL_COLORS.danger;
+      }
+
+      function StatBox({ label, value, color }) {
+        return (
+          <div
+            style={{
+              background: "#f0f4ff",
+              borderRadius: 12,
+              padding: "12px 16px",
+              flex: "1 1 120px",
+              minWidth: 100,
+            }}
+          >
+            <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>
+              {label}
+            </div>
+            <div
+              style={{
+                fontSize: 22,
+                fontWeight: 900,
+                color: color || SCHOOL_COLORS.primary,
+              }}
+            >
+              {value}
+            </div>
+          </div>
+        );
+      }
+
+      function AddStockForm({ onAdd }) {
+        const [form, setForm] = useState(EMPTY_FORM);
+        const [error, setError] = useState("");
+
+        const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
+
+        const handleSubmit = (e) => {
+          e.preventDefault();
+          if (!form.ticker.trim()) {
+            setError("Ticker symbol is required.");
+            return;
+          }
+          if (!form.company.trim()) {
+            setError("Company name is required.");
+            return;
+          }
+          if (form.expectedReturn === "" || isNaN(Number(form.expectedReturn))) {
+            setError("Expected return must be a number.");
+            return;
+          }
+          setError("");
+          onAdd({
+            ...form,
+            ticker: form.ticker.toUpperCase().trim(),
+            company: form.company.trim(),
+            expectedReturn: parseFloat(form.expectedReturn),
+            targetPrice: form.targetPrice ? parseFloat(form.targetPrice) : null,
+            entryPrice: form.entryPrice ? parseFloat(form.entryPrice) : null,
+            id: Date.now(),
+            addedDate: new Date().toISOString().slice(0, 10),
+          });
+          setForm(EMPTY_FORM);
+        };
+
+        const inputStyle = {
+          padding: "10px 12px",
+          borderRadius: 10,
+          border: "1px solid #e5e7eb",
+          outline: "none",
+          fontSize: 14,
+          width: "100%",
+          boxSizing: "border-box",
+        };
+
+        const selectStyle = {
+          ...inputStyle,
+          background: "white",
+          cursor: "pointer",
+        };
+
+        return (
+          <form onSubmit={handleSubmit}>
+            <SectionTitle>Add a Stock</SectionTitle>
+
+            {error && (
+              <div
+                style={{
+                  background: "#fef2f2",
+                  color: SCHOOL_COLORS.danger,
+                  border: "1px solid #fecaca",
+                  borderRadius: 10,
+                  padding: "10px 14px",
+                  marginBottom: 12,
+                  fontSize: 14,
+                }}
+              >
+                {error}
+              </div>
+            )}
+
+            <div style={{ display: "grid", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12 }}>
+                <div>
+                  <Label>Ticker Symbol *</Label>
+                  <input
+                    style={{ ...inputStyle, textTransform: "uppercase" }}
+                    placeholder="e.g. AAPL"
+                    value={form.ticker}
+                    onChange={(e) => set("ticker", e.target.value)}
+                    maxLength={10}
                   />
                 </div>
-              </Card>
-
-              <div style={{ height: 8 }} />
-
-              <Card>
-                <SectionTitle>Your Preferences</SectionTitle>
-                <div style={{ display: "grid", gap: 18 }}>
-                  {QUESTIONS.map((q) => (
-                    <div key={q.key}>
-                      <Label>{q.label}</Label>
-                      {q.type === "radio" && (
-                        <RadioGroup
-                          name={q.key}
-                          value={answers[q.key]}
-                          onChange={(v) => handleChange(q.key, v)}
-                          options={q.options}
-                        />
-                      )}
-                      {q.type === "checkbox" && (
-                        <CheckboxGroup
-                          values={answers[q.key]}
-                          onToggle={toggleInterest}
-                          options={q.options}
-                        />
-                      )}
-                    </div>
-                  ))}
-
-                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                    <button
-                      onClick={reset}
-                      style={{
-                        background: "white",
-                        color: SCHOOL_COLORS.primary,
-                        border: `2px solid ${SCHOOL_COLORS.primary}`,
-                        padding: "10px 14px",
-                        borderRadius: 12,
-                        fontWeight: 800,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Reset
-                    </button>
-
-                    <button
-                      disabled={!allRequiredAnswered}
-                      onClick={() =>
-                        window.scrollTo({
-                          top: document.body.scrollHeight,
-                          behavior: "smooth",
-                        })
-                      }
-                      style={{
-                        background: allRequiredAnswered
-                          ? SCHOOL_COLORS.primary
-                          : "#93c5fd",
-                        color: "white",
-                        border: "none",
-                        padding: "10px 14px",
-                        borderRadius: 12,
-                        fontWeight: 800,
-                        cursor: allRequiredAnswered ? "pointer" : "not-allowed",
-                      }}
-                    >
-                      Show my matches
-                    </button>
-                  </div>
+                <div>
+                  <Label>Company Name *</Label>
+                  <input
+                    style={inputStyle}
+                    placeholder="e.g. Apple Inc."
+                    value={form.company}
+                    onChange={(e) => set("company", e.target.value)}
+                  />
                 </div>
-              </Card>
+              </div>
 
-              <div style={{ height: 12 }} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                <div>
+                  <Label>Expected Return (%) *</Label>
+                  <input
+                    style={inputStyle}
+                    type="number"
+                    placeholder="e.g. 35"
+                    value={form.expectedReturn}
+                    onChange={(e) => set("expectedReturn", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>Entry Price ($)</Label>
+                  <input
+                    style={inputStyle}
+                    type="number"
+                    placeholder="Optional"
+                    value={form.entryPrice}
+                    onChange={(e) => set("entryPrice", e.target.value)}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div>
+                  <Label>Target Price ($)</Label>
+                  <input
+                    style={inputStyle}
+                    type="number"
+                    placeholder="Optional"
+                    value={form.targetPrice}
+                    onChange={(e) => set("targetPrice", e.target.value)}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+              </div>
 
-              <Results answers={answers} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <Label>Time Horizon</Label>
+                  <select
+                    style={selectStyle}
+                    value={form.horizon}
+                    onChange={(e) => set("horizon", e.target.value)}
+                  >
+                    <option value="short">Short-term (&lt; 1 yr)</option>
+                    <option value="medium">Medium-term (1–3 yr)</option>
+                    <option value="long">Long-term (3+ yr)</option>
+                  </select>
+                </div>
+                <div>
+                  <Label>Confidence Level</Label>
+                  <select
+                    style={selectStyle}
+                    value={form.confidence}
+                    onChange={(e) => set("confidence", e.target.value)}
+                  >
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <Label>Investment Thesis</Label>
+                <textarea
+                  style={{
+                    ...inputStyle,
+                    minHeight: 80,
+                    resize: "vertical",
+                    fontFamily: "inherit",
+                  }}
+                  placeholder="Why do you believe this stock will have a high return? (e.g. strong earnings growth, undervalued relative to peers, upcoming catalyst...)"
+                  value={form.thesis}
+                  onChange={(e) => set("thesis", e.target.value)}
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{
+                  background: SCHOOL_COLORS.primary,
+                  color: "white",
+                  border: "none",
+                  padding: "12px 20px",
+                  borderRadius: 12,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  fontSize: 15,
+                  alignSelf: "start",
+                }}
+              >
+                + Add to Watchlist
+              </button>
+            </div>
+          </form>
+        );
+      }
+
+      function StockCard({ stock, onRemove }) {
+        const [expanded, setExpanded] = useState(false);
+        const retColor = returnColor(stock.expectedReturn);
+        const confColor = CONFIDENCE_COLORS[stock.confidence];
+
+        const impliedReturn =
+          stock.entryPrice && stock.targetPrice
+            ? (((stock.targetPrice - stock.entryPrice) / stock.entryPrice) * 100).toFixed(1)
+            : null;
+
+        return (
+          <Card
+            style={{
+              borderLeft: `4px solid ${retColor}`,
+              transition: "box-shadow 0.15s",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontWeight: 900,
+                      fontSize: 20,
+                      color: SCHOOL_COLORS.primary,
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    {stock.ticker}
+                  </span>
+                  <span style={{ fontWeight: 600, opacity: 0.8 }}>
+                    {stock.company}
+                  </span>
+                </div>
+
+                <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  <Pill color={retColor}>
+                    {stock.expectedReturn > 0 ? "+" : ""}
+                    {stock.expectedReturn}% expected
+                  </Pill>
+                  <Pill color={confColor}>
+                    {CONFIDENCE_LABELS[stock.confidence]}
+                  </Pill>
+                  <Pill>{HORIZON_LABELS[stock.horizon]}</Pill>
+                  {impliedReturn !== null && (
+                    <Pill color={returnColor(impliedReturn)}>
+                      {impliedReturn > 0 ? "+" : ""}
+                      {impliedReturn}% price target implied
+                    </Pill>
+                  )}
+                </div>
+
+                {stock.entryPrice && (
+                  <div style={{ fontSize: 13, opacity: 0.7, marginTop: 6 }}>
+                    Entry: ${stock.entryPrice.toFixed(2)}
+                    {stock.targetPrice && (
+                      <> &rarr; Target: ${stock.targetPrice.toFixed(2)}</>
+                    )}
+                  </div>
+                )}
+
+                {stock.thesis && (
+                  <div style={{ marginTop: 10 }}>
+                    <button
+                      onClick={() => setExpanded((x) => !x)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: SCHOOL_COLORS.primaryLight,
+                        cursor: "pointer",
+                        fontWeight: 700,
+                        fontSize: 13,
+                        padding: 0,
+                      }}
+                    >
+                      {expanded ? "Hide thesis ▲" : "Show thesis ▼"}
+                    </button>
+                    {expanded && (
+                      <div
+                        style={{
+                          marginTop: 8,
+                          padding: "10px 14px",
+                          background: "#f8fafc",
+                          borderRadius: 10,
+                          fontSize: 14,
+                          lineHeight: 1.6,
+                          borderLeft: `3px solid ${retColor}`,
+                        }}
+                      >
+                        {stock.thesis}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               <div
                 style={{
-                  padding: 20,
-                  textAlign: "center",
-                  opacity: 0.6,
-                  fontSize: 12,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-end",
+                  gap: 6,
                 }}
               >
-                Tip: If you’re not a first-year member, Principles events are
-                hidden automatically.
+                <div
+                  style={{
+                    fontSize: 28,
+                    fontWeight: 900,
+                    color: retColor,
+                    lineHeight: 1,
+                  }}
+                >
+                  {stock.expectedReturn > 0 ? "+" : ""}
+                  {stock.expectedReturn}%
+                </div>
+                <div style={{ fontSize: 11, opacity: 0.5 }}>
+                  Added {stock.addedDate}
+                </div>
+                <button
+                  onClick={() => onRemove(stock.id)}
+                  style={{
+                    background: "none",
+                    border: "1px solid #e5e7eb",
+                    color: "#9ca3af",
+                    borderRadius: 8,
+                    padding: "4px 10px",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    marginTop: 4,
+                  }}
+                >
+                  Remove
+                </button>
               </div>
+            </div>
+          </Card>
+        );
+      }
+
+      function StockWatchlist() {
+        const [stocks, setStocks] = useState(() => {
+          try {
+            const saved = localStorage.getItem("highReturnWatchlist");
+            return saved ? JSON.parse(saved) : [];
+          } catch {
+            return [];
+          }
+        });
+
+        const [sortBy, setSortBy] = useState("expectedReturn");
+        const [filterHorizon, setFilterHorizon] = useState("all");
+        const [filterConfidence, setFilterConfidence] = useState("all");
+
+        useEffect(() => {
+          try {
+            localStorage.setItem("highReturnWatchlist", JSON.stringify(stocks));
+          } catch {}
+        }, [stocks]);
+
+        const addStock = (stock) => setStocks((s) => [stock, ...s]);
+        const removeStock = (id) => setStocks((s) => s.filter((x) => x.id !== id));
+
+        const filtered = useMemo(() => {
+          let list = [...stocks];
+          if (filterHorizon !== "all")
+            list = list.filter((s) => s.horizon === filterHorizon);
+          if (filterConfidence !== "all")
+            list = list.filter((s) => s.confidence === filterConfidence);
+
+          list.sort((a, b) => {
+            if (sortBy === "expectedReturn") return b.expectedReturn - a.expectedReturn;
+            if (sortBy === "confidence") {
+              const order = { high: 3, medium: 2, low: 1 };
+              return order[b.confidence] - order[a.confidence];
+            }
+            if (sortBy === "date") return b.id - a.id;
+            return 0;
+          });
+          return list;
+        }, [stocks, sortBy, filterHorizon, filterConfidence]);
+
+        const avgReturn = useMemo(() => {
+          if (!stocks.length) return null;
+          const sum = stocks.reduce((acc, s) => acc + s.expectedReturn, 0);
+          return (sum / stocks.length).toFixed(1);
+        }, [stocks]);
+
+        const maxReturn = useMemo(() => {
+          if (!stocks.length) return null;
+          return Math.max(...stocks.map((s) => s.expectedReturn));
+        }, [stocks]);
+
+        const highConfCount = stocks.filter((s) => s.confidence === "high").length;
+
+        const controlStyle = {
+          padding: "8px 12px",
+          borderRadius: 10,
+          border: "1px solid #e5e7eb",
+          background: "white",
+          fontSize: 13,
+          cursor: "pointer",
+          outline: "none",
+        };
+
+        return (
+          <div>
+            <Card style={{ marginTop: 12 }}>
+              <AddStockForm onAdd={addStock} />
+            </Card>
+
+            {stocks.length > 0 && (
+              <>
+                <Card style={{ marginTop: 12 }}>
+                  <SectionTitle>Portfolio Overview</SectionTitle>
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    <StatBox label="Stocks Watched" value={stocks.length} />
+                    <StatBox
+                      label="Avg Expected Return"
+                      value={`+${avgReturn}%`}
+                      color={returnColor(avgReturn)}
+                    />
+                    <StatBox
+                      label="Highest Expected"
+                      value={`+${maxReturn}%`}
+                      color={returnColor(maxReturn)}
+                    />
+                    <StatBox
+                      label="High Confidence"
+                      value={highConfCount}
+                      color={SCHOOL_COLORS.green}
+                    />
+                  </div>
+                </Card>
+
+                <div style={{ marginTop: 12 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <span style={{ fontWeight: 700, fontSize: 14 }}>Sort:</span>
+                    <select
+                      style={controlStyle}
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                    >
+                      <option value="expectedReturn">Expected Return (high → low)</option>
+                      <option value="confidence">Confidence</option>
+                      <option value="date">Date Added (newest first)</option>
+                    </select>
+
+                    <span style={{ fontWeight: 700, fontSize: 14, marginLeft: 8 }}>
+                      Horizon:
+                    </span>
+                    <select
+                      style={controlStyle}
+                      value={filterHorizon}
+                      onChange={(e) => setFilterHorizon(e.target.value)}
+                    >
+                      <option value="all">All</option>
+                      <option value="short">Short-term</option>
+                      <option value="medium">Medium-term</option>
+                      <option value="long">Long-term</option>
+                    </select>
+
+                    <span style={{ fontWeight: 700, fontSize: 14, marginLeft: 8 }}>
+                      Confidence:
+                    </span>
+                    <select
+                      style={controlStyle}
+                      value={filterConfidence}
+                      onChange={(e) => setFilterConfidence(e.target.value)}
+                    >
+                      <option value="all">All</option>
+                      <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="low">Low</option>
+                    </select>
+
+                    <span style={{ fontSize: 13, opacity: 0.6, marginLeft: "auto" }}>
+                      {filtered.length} of {stocks.length} showing
+                    </span>
+                  </div>
+
+                  <div style={{ display: "grid", gap: 12 }}>
+                    {filtered.map((stock) => (
+                      <StockCard key={stock.id} stock={stock} onRemove={removeStock} />
+                    ))}
+                    {filtered.length === 0 && (
+                      <div
+                        style={{
+                          textAlign: "center",
+                          padding: 32,
+                          opacity: 0.5,
+                          fontSize: 14,
+                        }}
+                      >
+                        No stocks match the current filters.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {stocks.length === 0 && (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "48px 24px",
+                  opacity: 0.5,
+                  fontSize: 14,
+                }}
+              >
+                Your watchlist is empty. Add a stock above to get started.
+              </div>
+            )}
+
+            <div
+              style={{
+                padding: 20,
+                textAlign: "center",
+                opacity: 0.5,
+                fontSize: 11,
+                marginTop: 8,
+              }}
+            >
+              Watchlist data is stored locally in your browser. This is for
+              personal tracking only — not financial advice.
+            </div>
+          </div>
+        );
+      }
+
+      // ─── APP ─────────────────────────────────────────────────────────────────────
+
+      function App() {
+        const [activeTab, setActiveTab] = useState("deca");
+        const [logoUrl, setLogoUrl] = useState("");
+
+        const tabs = [
+          { id: "deca", label: "DECA Recommender" },
+          { id: "stocks", label: "Stock Watchlist" },
+        ];
+
+        return (
+          <div style={containerStyle}>
+            <div style={{ maxWidth: 1000, margin: "0 auto", padding: 24 }}>
+              <Header
+                title={
+                  activeTab === "deca"
+                    ? "DECA Event Recommender"
+                    : "High Return Stock Watchlist"
+                }
+                subtitle={
+                  activeTab === "deca"
+                    ? "Answer a few smart questions and get the best-fit DECA events for you."
+                    : "Track stocks you believe will outperform — log your thesis and expected returns."
+                }
+                logoUrl={logoUrl}
+              />
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 4,
+                  marginTop: 16,
+                  borderBottom: "2px solid #e5e7eb",
+                  paddingBottom: 0,
+                }}
+              >
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      borderBottom:
+                        activeTab === tab.id
+                          ? `3px solid ${SCHOOL_COLORS.primary}`
+                          : "3px solid transparent",
+                      padding: "10px 18px",
+                      cursor: "pointer",
+                      fontWeight: activeTab === tab.id ? 800 : 600,
+                      color:
+                        activeTab === tab.id
+                          ? SCHOOL_COLORS.primary
+                          : "#6b7280",
+                      fontSize: 15,
+                      marginBottom: -2,
+                      borderRadius: "8px 8px 0 0",
+                      transition: "color 0.15s",
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {activeTab === "deca" && (
+                <DecaTab logoUrl={logoUrl} setLogoUrl={setLogoUrl} />
+              )}
+              {activeTab === "stocks" && <StockWatchlist />}
             </div>
           </div>
         );
