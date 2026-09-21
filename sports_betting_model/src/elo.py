@@ -36,7 +36,8 @@ def run_elo(
     k: float = DEFAULT_K,
     home_advantage: float = DEFAULT_HOME_ADVANTAGE,
     season_regression: float = DEFAULT_SEASON_REGRESSION,
-) -> pd.DataFrame:
+    return_final_ratings: bool = False,
+):
     """Compute pre-game Elo ratings and implied home win probability for every game.
 
     `games` must be sorted chronologically and have columns: season, home_team,
@@ -95,4 +96,7 @@ def run_elo(
     games["home_elo_pre"] = home_elo_pre
     games["away_elo_pre"] = away_elo_pre
     games["elo_home_win_prob"] = home_win_prob
+
+    if return_final_ratings:
+        return games, ratings
     return games

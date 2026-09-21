@@ -91,6 +91,28 @@ def _team_week_off_epa(years: list[int], force_refresh: bool = False) -> pd.Data
     return grouped[["season", "week", "team", "off_epa_per_play"]]
 
 
+def _team_game_log(reg: pd.DataFrame, team_week: pd.DataFrame) -> pd.DataFrame:
+    """Long format: one row per team-appearance-in-a-game, with that team's own
+    off_epa_per_play for the week and their opponent's (= what the team's
+    defense faced that week), unsorted.
+    """
+    home_side = reg[["game_id", "season", "week", "gameday", "home_team", "away_team"]].rename(
+        columns={"home_team": "team", "away_team": "opponent"}
+    )
+    away_side = reg[["game_id", "season", "week", "gameday", "home_team", "away_team"]].rename(
+        columns={"away_team": "team", "home_team": "opponent"}
+    )
+    long_log = pd.concat([home_side, away_side], ignore_index=True)
+
+    long_log = long_log.merge(team_week, on=["season", "week", "team"], how="left")
+    long_log = long_log.merge(
+        team_week.rename(columns={"team": "opponent", "off_epa_per_play": "opp_off_epa_per_play"}),
+        on=["season", "week", "opponent"],
+        how="left",
+    )
+    return long_log
+
+
 def build_trailing_epa_features(
     games: pd.DataFrame,
     window: int = ROLLING_WINDOW,
@@ -110,23 +132,7 @@ def build_trailing_epa_features(
     years = sorted(reg["season"].unique().tolist())
 
     team_week = _team_week_off_epa(years, force_refresh=force_refresh)
-
-    # Long format: one row per team-appearance-in-a-game.
-    home_side = reg[["game_id", "season", "week", "gameday", "home_team", "away_team"]].rename(
-        columns={"home_team": "team", "away_team": "opponent"}
-    )
-    away_side = reg[["game_id", "season", "week", "gameday", "home_team", "away_team"]].rename(
-        columns={"away_team": "team", "home_team": "opponent"}
-    )
-    long_log = pd.concat([home_side, away_side], ignore_index=True)
-
-    long_log = long_log.merge(team_week, on=["season", "week", "team"], how="left")
-    long_log = long_log.merge(
-        team_week.rename(columns={"team": "opponent", "off_epa_per_play": "opp_off_epa_per_play"}),
-        on=["season", "week", "opponent"],
-        how="left",
-    )
-
+    long_log = _team_game_log(reg, team_week)
     long_log = long_log.sort_values(["team", "gameday"])
 
     long_log["trailing_off_epa"] = (
@@ -169,3 +175,47 @@ def build_trailing_epa_features(
     )
 
     return reg
+
+
+def current_team_strength(
+    completed_games: pd.DataFrame,
+    window: int = ROLLING_WINDOW,
+    min_periods: int = MIN_PERIODS,
+    force_refresh: bool = False,
+) -> pd.DataFrame:
+    """Each team's offense/defense EPA-per-play *as of right now* -- i.e.
+    including their most recent completed game, for use predicting a game
+    that hasn't been played yet. `completed_games` must only contain games
+    with a known final score (REG season rows are used; others ignored).
+
+    This is deliberately a different rolling computation from
+    `build_trailing_epa_features`: that one excludes each game from its own
+    feature (correct for training/backtesting), this one wants the fullest
+    up-to-date picture of a team's current form (correct for a live pick).
+
+    Returns one row per team: team, off_epa, def_epa_allowed.
+    """
+    reg = completed_games[completed_games["game_type"] == "REG"].copy()
+    years = sorted(reg["season"].unique().tolist())
+
+    team_week = _team_week_off_epa(years, force_refresh=force_refresh)
+    long_log = _team_game_log(reg, team_week)
+    long_log = long_log.sort_values(["team", "gameday"])
+
+    long_log["off_epa_now"] = (
+        long_log.groupby("team")["off_epa_per_play"]
+        .transform(lambda s: s.rolling(window, min_periods=min_periods).mean())
+    )
+    long_log["def_epa_allowed_now"] = (
+        long_log.groupby("team")["opp_off_epa_per_play"]
+        .transform(lambda s: s.rolling(window, min_periods=min_periods).mean())
+    )
+
+    league_avg_off = team_week["off_epa_per_play"].mean()
+    latest = long_log.sort_values("gameday").groupby("team").tail(1)
+    latest = latest[["team", "off_epa_now", "def_epa_allowed_now"]].rename(
+        columns={"off_epa_now": "off_epa", "def_epa_allowed_now": "def_epa_allowed"}
+    )
+    latest["off_epa"] = latest["off_epa"].fillna(league_avg_off)
+    latest["def_epa_allowed"] = latest["def_epa_allowed"].fillna(league_avg_off)
+    return latest.reset_index(drop=True)
