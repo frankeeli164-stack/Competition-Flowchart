@@ -11,6 +11,9 @@ import pandas as pd
 
 FEATURE_COLUMNS = ["elo_logit", "rest_diff", "div_game"]
 
+EPA_COLUMNS = ["home_off_epa", "home_def_epa_allowed", "away_off_epa", "away_def_epa_allowed"]
+FEATURE_COLUMNS_V2 = FEATURE_COLUMNS + EPA_COLUMNS
+
 
 def _logit(p: pd.Series, eps: float = 1e-6) -> pd.Series:
     p = p.clip(eps, 1 - eps)
@@ -20,6 +23,10 @@ def _logit(p: pd.Series, eps: float = 1e-6) -> pd.Series:
 def build_features(games_with_elo: pd.DataFrame) -> pd.DataFrame:
     """Add model feature columns to a games dataframe that already has Elo columns
     (i.e. has been through `elo.run_elo`).
+
+    If the four trailing-EPA columns (from `team_epa.build_trailing_epa_features`)
+    are already present, they're passed through untouched so `FEATURE_COLUMNS_V2`
+    can be used; otherwise only the base `FEATURE_COLUMNS` are available.
     """
     df = games_with_elo.copy()
 
