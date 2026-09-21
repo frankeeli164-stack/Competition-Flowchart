@@ -34,6 +34,62 @@ you decide whether to bet a cent of real money on this.
   suggested Kelly stake. No live odds feed is included (see below).
 - **Bet tracker** (`src/tracker.py`) — plain CSV log to record real bets you
   place and settle them later.
+- **Live weekly picks** (`scripts/next_week_picks.py`) — fits the model on
+  all completed history and ranks the upcoming week's games by win
+  confidence, with an example parlay built from the top picks (and a
+  side-by-side comparison to betting the same picks straight — see
+  **Player props** below for why a parlay of good picks isn't itself a good
+  bet).
+- **Player prop projections** (`src/player_props.py`, `src/props_math.py`) —
+  per-player passing/rushing/receiving yardage, receptions, and anytime-TD
+  probability, projected from each player's own trailing form plus a
+  (deliberately small — see below) opponent-strength adjustment. See
+  **Player props: what this can and can't validate**.
+
+## Player props: what this can and can't validate
+
+Player props are a fundamentally weaker validation story than the moneyline
+model above, for one structural reason: **there is no free historical
+player-prop-odds dataset**, unlike game moneylines (which `nflverse`
+conveniently publishes going back to 1999). Historical prop lines exist only
+behind paid data vendors. That means:
+
+- `scripts/player_props_report.py` can validate that projections are
+  *accurate* (MAE against actual results, compared to a naive "just use the
+  player's own trailing average" baseline) and *roughly unbiased*
+  (calibration), using the same leakage-free `shift(1).rolling()` discipline
+  as everything else in this project.
+- It **cannot** validate ROI against a real market, because there's no
+  historical market to test against. Don't mistake "the projection is
+  accurate" for "this beats sportsbook prop pricing" — those are different
+  claims and only the first one is tested here.
+- `scripts/prop_bet_check.py` is the practical tool: give it a player, stat,
+  opponent, and the actual line/odds from your sportsbook, and it computes
+  the model's probability and edge against that real number. This is
+  intentionally manual — no live odds feed exists in this project.
+
+**A real finding from backtesting, not a design choice made in advance:**
+the opponent-strength adjustment (a defense's trailing allowed-yards to a
+position group) was originally implemented the same way as team-level EPA,
+and it made projections measurably *worse* (~2-4% higher MAE) at full
+strength. Position-level defense-allowed stats are much noisier than
+team-level EPA (far fewer relevant plays per game to average over). Heavily
+shrinking the adjustment toward "ignore it" (`DEFAULT_ADJUSTMENT_SHRINK =
+0.15` in `player_props.py`) got it to roughly neutral. The honest takeaway:
+**for individual player props, a player's own recent form dominates far more
+than opponent matchup does** — the opposite of what was found for team-level
+game outcomes, where the opponent adjustment measurably helped. Run
+`scripts/player_props_report.py` yourself to see this.
+
+**Data staleness is worse here than for team games.** `nflverse`'s
+`player_stats` release currently only goes through 2024 — no 2025 or 2026
+data is published yet. `scripts/prop_bet_check.py` prints an unmissable
+warning when this applies, but the practical effect is real: right now,
+every live player projection reflects a player's performance as of the end
+of the 2024 season, not their current form. A player who changed teams, got
+injured, lost/gained a role, or simply improved or declined since then is
+invisible to this model until `nflverse` publishes newer data. Check the
+warning banner before trusting any live prop output.
 
 ## Data source
 
@@ -133,23 +189,38 @@ REGULAR SEASON ONLY, same games, baseline vs. EPA-enhanced model:
   rolling window length) instead of the current fixed defaults.
 - Extend EPA features to the postseason (needs careful week-number alignment
   between data sources — deliberately skipped for now, see `team_epa.py`).
+- Real per-player modeling for props instead of a population-level Normal
+  approximation (e.g. per-position variance models, usage/target-share
+  trends, snap counts) — the current version borrows strength across a whole
+  position group because most individual players don't have enough games to
+  fit their own distribution.
+- A paid historical player-prop-odds dataset, to actually validate ROI for
+  props the way `backtest.py` does for moneylines (currently impossible with
+  free data — see **Player props** above).
 
 ## Project layout
 
 ```
 sports_betting_model/
   src/
-    odds_math.py   american/decimal odds, implied prob, de-vig, EV
-    kelly.py        Kelly criterion stake sizing
-    data.py         fetch + cache NFL games/odds
-    elo.py          sequential Elo ratings
-    team_epa.py     trailing offense/defense EPA-per-play (no leakage)
-    features.py     pre-game feature engineering (no leakage)
-    model.py        walk-forward logistic regression
-    backtest.py      calibration scoring + betting simulation
-    ev.py           value-bet finder for upcoming games (you supply odds)
-    tracker.py       CSV bet log for bets you actually place
+    odds_math.py         american/decimal odds, implied prob, de-vig, EV
+    kelly.py              Kelly criterion stake sizing
+    data.py               fetch + cache NFL games/odds
+    elo.py                sequential Elo ratings
+    player_stats_source.py  shared nflverse player-stats fetch/cache
+    team_epa.py           trailing offense/defense EPA-per-play (no leakage)
+    features.py           pre-game feature engineering (no leakage)
+    model.py              walk-forward logistic regression
+    backtest.py            calibration scoring + betting simulation
+    ev.py                 value-bet finder for upcoming games (you supply odds)
+    tracker.py             CSV bet log for bets you actually place
+    player_props.py       trailing player stats + opponent-adjusted projections
+    props_math.py         over/under and anytime-TD probability math
+    props_backtest.py     player-prop projection accuracy/calibration (no ROI -- see above)
   scripts/
-    run_pipeline.py end-to-end CLI: fetch -> train -> backtest -> report
-  tests/            unit tests for odds/Kelly math and Elo
+    run_pipeline.py       end-to-end CLI: fetch -> train -> backtest -> report
+    next_week_picks.py    live model picks for the upcoming week + example parlay
+    player_props_report.py  player-prop projection accuracy/calibration backtest
+    prop_bet_check.py     evaluate ONE prop against a line/odds you supply
+  tests/                  unit tests: odds/Kelly math, Elo, EPA, player props (all leak-checked)
 ```
